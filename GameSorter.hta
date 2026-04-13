@@ -1,0 +1,747 @@
+<html>
+<head>
+    <title>GameSorter</title>
+    <HTA:APPLICATION 
+        ID="oGamePicker" APPLICATIONNAME="GameSorter"
+        BORDER="thin" SCROLL="no" SINGLEINSTANCE="yes" WINDOWSTATE="normal"
+        WIDTH="650" HEIGHT="550"
+	ICON="app_images/gs_icon.ico"
+    >
+
+
+    <style>
+body { background-color: #0f0f0f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 10px; }
+    .tabs { height: 40px; border-bottom: 2px solid #333; margin-bottom: 15px; }
+    .tab { float: left; padding: 10px 20px; cursor: pointer; background: #1a1a1a; border: 1px solid #333; border-bottom: none; margin-right: 5px; font-size: 12px; }
+    .tab_active { background: #00e5ff; color: #000; font-weight: bold; }
+
+
+    .content { display: none;
+
+
+
+
+/* display: flex; */
+    justify-content: center; /* Centraliza horizontalmente */
+    align-items: center;     /* Centraliza verticalmente */
+  /*  height: 100vh;            Faz o container ocupar a altura da tela, se necessário */
+
+
+ height: 440px;
+nomax-height: 100px;
+
+/* BLOQUEIO AQUI */
+    overflow: hidden !important;
+
+/* ESSA LINHA É A CHAVE: impede que o padding aumente o tamanho da caixa */
+    box-sizing: border-box;
+
+
+ background: #1a1a1a; border: 1px solid #333; padding: 15px; overflow-y: auto; clear: both; 
+
+/* ADICIONE ESTAS LINHAS */
+  /*  background-image: url('app_images/gs_bkg.png'); */
+    background-position: center; /* Centraliza a imagem */
+    background-repeat: no-repeat; /* Não deixa a imagem "ladrilhar" */
+    background-size: cover; /* Faz a imagem cobrir todo o espaço */
+
+}
+
+
+    h2 { color: #00e5ff; margin-top: 0; font-size: 18px; }
+    #display { font-size: 15px; font-weight: bold; font-family: helveltica; text-align: center; color: #fff; color:lightgray; padding: 10px; border: 1px dashed #444; margin: 10px 0; }
+    .list-box { width: 100%; height: 250px; background: #000; color: #00ff00; font-family: 'Consolas', monospace; font-size: 12px; }
+    .btn { background: #00e5ff; border: none; color: #000; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+    #status-bar { position: absolute; bottom: 0; left: 0; width: 110%; background: #00e5ff; color: #000; font-size: 11px; padding: 3px 10px; }
+    select { background:#222; color:#fff; border:1px solid #444; padding:2px; }
+
+html, body { 
+    -ms-user-select: none; 
+    user-select: none; 
+    cursor: default; /* Removi o !important daqui */
+}
+
+textarea, input[type="text"] { 
+    -ms-user-select: text !important; 
+    user-select: text !important; 
+    cursor: text !important; /* O !important aqui garante que o I-beam apareça */
+}
+
+    /* Manter a mãozinha em elementos clicáveis */
+    .btn, .tab, select, option { 
+        cursor: pointer !important; 
+    }
+
+
+.btn-help {
+        position: absolute;
+        top: 8px;      /* Alinhado com o topo das abas */
+        right: 10px;    /* Colado na direita */
+        width: 20px;   /* Um pouco menor */
+        height: 20px;
+        background: #1a1a1a; /* Fundo escuro (inverso) */
+        color: #888;       /* Texto cinza suave (inverso) */
+        border-radius: 4px; 
+        text-align: center;
+        line-height: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000;
+        border: 1px solid #444; /* Borda discreta */
+        /* Transição suave para o hover */
+        -webkit-transition: all 0.2s ease; 
+        transition: all 0.2s ease;
+    }
+    
+    /* Quando passar o mouse, ele revela a cor do app */
+    .btn-help:hover { 
+        background: #333; 
+        color: #fff;       /* Texto branco no hover */
+        border-color: #00e5ff; /* Borda azul do app apenas no hover */
+    }
+
+
+.spin-button-container {
+        display: inline-block; /* Faz a div envolver apenas o conteúdo */
+        nocursor: pointer;
+        border-radius: 50%;    /* Torna a área de detecção de clique circular */
+        overflow: hidden;      /* Garante que nada fora do círculo seja clicável */
+        
+        /* AJUSTE ESTES VALORES PARA O TAMANHO DA SUA IMAGEM */
+        width: 240px;  
+        height: 240px;
+        
+        /* Remove seleções acidentais de texto ao clicar rápido */
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    .spin-image {
+        width: 220px;  /* Ajuste para o tamanho real das suas imagens */
+        height: 220px; /* Ajuste para o tamanho real das suas imagens */
+        display: block;
+        /* Opcional: uma transição suave de opacidade na troca */
+        transition: opacity 0.1s ease-in-out; 
+    }
+
+
+
+    </style>
+
+    <script language="VBScript">
+        Dim fso, shell, appPath, historicoFile, logFile, cPath, runKey, jogoPendente
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        Set shell = CreateObject("WScript.Shell")
+
+' Forma robusta de pegar a pasta do HTA sem erro de string:
+Dim loc
+loc = Replace(window.location.pathname, "%20", " ") ' Trata espaços na URL
+If Left(loc, 1) = "/" Then loc = Mid(loc, 2) ' Remove a barra inicial do HTML
+appPath = fso.GetParentFolderName(loc)
+
+' Se o acima falhar em algum sistema, o fallback seguro:
+If Not fso.FolderExists(appPath) Then
+    appPath = fso.GetAbsolutePathName(".")
+End If
+        
+        'appPath = fso.GetParentFolderName(Replace(oGamePicker.commandLine, Chr(34), ""))
+        
+
+
+Dim pastaOperacao ' Variável global para o caminho
+
+Dim pastaAlvo ' Variável Global
+
+Sub Window_OnLoad
+    window.resizeTo 670, 580
+    Dim sPath, sPathAlt ' Variáveis auxiliares
+    
+    Set shell = CreateObject("WScript.Shell")
+    'appPath = fso.GetParentFolderName(Replace(oGamePicker.commandLine, Chr(34), ""))
+    pastaAlvo = appPath ' Padrão de segurança
+
+    ' Se detectar o parâmetro, tenta localizar a pasta da Steam
+    If InStr(LCase(oGamePicker.commandLine), "/steamlinks") > 0 Then
+        ' Caminho 1: Roaming (Padrão)
+        sPath = shell.ExpandEnvironmentStrings("%AppData%") & "\Microsoft\Windows\Start Menu\Programs\Steam"
+        ' Caminho 2: ProgramData (Todos os usuários)
+        sPathAlt = shell.ExpandEnvironmentStrings("%ProgramData%") & "\Microsoft\Windows\Start Menu\Programs\Steam"
+        
+        If fso.FolderExists(sPath) Then
+            pastaAlvo = sPath
+        ElseIf fso.FolderExists(sPathAlt) Then
+            pastaAlvo = sPathAlt
+        Else
+            ' SE NENHUM EXISTIR: Avisa e volta para a pasta do App para não travar
+            MsgBox "AVISO: Pasta da Steam nao encontrada!" & vbCrLf & "Usando pasta local.", 48, "GameSorter"
+            pastaAlvo = appPath
+        End If
+    End If
+
+' --- CONFIGURAÇÃO DE CAMINHOS (AGORA NA TEMP) ---
+    Dim tempPath
+    tempPath = shell.ExpandEnvironmentStrings("%TEMP%")
+
+    ' --- CONFIGURAÇÃO DE CAMINHOS ---
+    historicoFile = tempPath & "\sorteds.log"
+    logFile = tempPath & "\sg_execucao.log" ' O log vai para onde o sorteio acontece
+'    cPath = tempPath & "\sg_config.ini"
+cPath = shell.ExpandEnvironmentStrings("%TEMP%") & "\sg_config.ini"
+    runKey = "HKCU\Software\Microsoft\Windows\CurrentVersion\Run\GameSorter"
+
+    CarregarConfiguracoes
+    AlterarIdioma
+    ShowTab "main"
+    CheckStartupStatus
+
+
+
+
+' --- NOVO PARÂMETRO: AUTO PLAY ---
+    ' Se houver /autoplay na linha de comando, inicia o sorteio após 1 segundo
+    If InStr(LCase(oGamePicker.commandLine), "/autoplay") > 0 Then
+        window.setTimeout "SortearPrincipal", 1000
+    End If
+
+    If pastaAlvo <> appPath Then 
+        document.getElementById("status-bar").innerText = "MODO STEAM ATIVO: " & pastaAlvo
+    End If
+
+
+
+
+End Sub
+
+
+        ' --- SISTEMA DE IDIOMAS ---
+        Sub AlterarIdioma()
+            Dim lang, textos
+            lang = document.getElementById("selLang").value
+Select Case lang
+        ' Ordem: ..., 8: AppUtil, 9: Startup
+	Case "pt": textos = Array("SORTEIO", "HISTORICO", "UTILITARIOS", "LOGS", "SORTEAR", "MODO LIVRE", "SALVAR", "PRONTO", "Ativar AppUtil", "Iniciar com Windows", "Idioma:", "Som")
+        Case "en": textos = Array("DRAW", "HISTORY", "UTILITIES", "LOGS", "SPIN", "FREE MODE", "SAVE", "READY", "Enable AppUtil", "Start with Windows", "Language:", "Sound")
+        Case "es": textos = Array("SORTEO", "HISTORIAL", "UTILIDADES", "LOGS", "SORTEAR", "MODO LIBRE", "GUARDAR", "LISTO", "Activar AppUtil", "Iniciar con Windows", "Idioma:", "Sonido")
+    End Select
+
+            document.getElementById("tab-main").innerText = textos(0)
+            document.getElementById("tab-hist").innerText = textos(1)
+            document.getElementById("tab-util").innerText = textos(2)
+            document.getElementById("tab-log").innerText = textos(3)
+            'document.getElementById("btnSortear").innerText = textos(4)
+            document.getElementById("lblModo").innerText = textos(5)
+            document.getElementById("btnSalvar").innerText = textos(6)
+            
+            Dim d: d = document.getElementById("display").innerText
+            If d = "PRONTO" Or d = "READY" Or d = "LISTO" Then document.getElementById("display").innerText = textos(7)
+
+document.getElementById("lblUtil").innerText = textos(8)
+    document.getElementById("lblStartup").innerText = textos(9)
+document.getElementById("lblLangText").innerText = textos(10)
+            document.getElementById("lblSound").innerText = textos(11)
+
+            SalvarConfiguracoes
+        End Sub
+
+        ' --- PERSISTÊNCIA NA TEMP ---
+        Sub SalvarConfiguracoes()
+            On Error Resume Next
+            Dim ts
+            Set ts = fso.CreateTextFile(cPath, True)
+            ts.WriteLine document.getElementById("txtUtil1").value
+            ts.WriteLine document.getElementById("chkUtil1").checked
+            ts.WriteLine document.getElementById("chkModoLivre").checked
+            ts.WriteLine document.getElementById("selLang").value
+ts.WriteLine document.getElementById("chkWait").checked ' Novo
+            ts.WriteLine document.getElementById("txtDelay").value  ' Novo
+	    ts.WriteLine document.getElementById("chkSound").checked
+
+            ts.Close
+        End Sub
+
+        Sub CarregarConfiguracoes()
+            On Error Resume Next
+            Dim ts
+            If fso.FileExists(cPath) Then
+                Set ts = fso.OpenTextFile(cPath, 1)
+                If Not ts.AtEndOfStream Then document.getElementById("txtUtil1").value = ts.ReadLine
+                If Not ts.AtEndOfStream Then document.getElementById("chkUtil1").checked = (ts.ReadLine = "True")
+                If Not ts.AtEndOfStream Then document.getElementById("chkModoLivre").checked = (ts.ReadLine = "True")
+                If Not ts.AtEndOfStream Then 
+                    document.getElementById("selLang").value = ts.ReadLine
+
+If Not ts.AtEndOfStream Then document.getElementById("chkWait").checked = (ts.ReadLine = "True")
+                If Not ts.AtEndOfStream Then document.getElementById("txtDelay").value = ts.ReadLine
+' Adicione esta linha no final do bloco If Not ts.AtEndOfStream
+		If Not ts.AtEndOfStream Then document.getElementById("chkSound").checked = (ts.ReadLine = "True")
+
+                    AlterarIdioma
+                End If
+                ts.Close
+            End If
+        End Sub
+
+        Sub ShowTab(tabId)
+            document.getElementById("content-main").style.display = "none"
+            document.getElementById("content-hist").style.display = "none"
+            document.getElementById("content-util").style.display = "none"
+            document.getElementById("content-log").style.display = "none"
+            document.getElementById("tab-main").className = "tab"
+            document.getElementById("tab-hist").className = "tab"
+            document.getElementById("tab-util").className = "tab"
+            document.getElementById("tab-log").className = "tab"
+            document.getElementById("content-" & tabId).style.display = "block"
+            document.getElementById("tab-" & tabId).className = "tab tab_active"
+            If tabId = "log" Then RefreshLog
+            If tabId = "hist" Then UpdateHistoryList
+        End Sub
+
+Sub SortearPrincipal()
+    Dim folder, file, lista(), total, escolhido, historico, modoLivre, ext, ts, lnk
+    Dim colFiles, caminhoFull, encontrado, idx, isValid, tentativas, delayUser
+    
+    pastaAlvo = Replace(pastaAlvo, Chr(34), "")
+    pastaAlvo = Trim(pastaAlvo)
+    If pastaAlvo = "" Then pastaAlvo = appPath
+
+    On Error Resume Next
+    If Not fso.FolderExists(pastaAlvo) Then
+        WriteLog "ERROR: Target folder not found: " & pastaAlvo
+        pastaAlvo = appPath
+    End If
+
+    Set folder = fso.GetFolder(pastaAlvo)
+    Set colFiles = folder.Files 
+
+    total = 0
+    For Each file In colFiles
+        ext = LCase(fso.GetExtensionName(file.Name))
+        If (ext = "lnk" Or ext = "url") And InStr(LCase(file.Name), "sorteador") = 0 Then
+            ReDim Preserve lista(total)
+            lista(total) = file.Name
+            total = total + 1
+        End If
+    Next
+    On Error GoTo 0
+
+    If total = 0 Then 
+        MsgBox "Nenhum jogo encontrado em: " & pastaAlvo, 48
+        Exit Sub
+    End If
+
+    ' Carregar Historico da pasta TEMP
+    historico = ""
+    If fso.FileExists(historicoFile) Then
+        Set ts = fso.OpenTextFile(historicoFile, 1)
+        If Not ts.AtEndOfStream Then historico = ts.ReadAll
+        ts.Close
+    End If
+
+    Randomize
+    encontrado = False : tentativas = 0
+    modoLivre = document.getElementById("chkModoLivre").checked
+
+
+
+
+' Antes de iniciar o loop, garanta que o botão esteja no estado ON (Ciano)
+    ' (Isso já foi feito pela animação, mas é bom garantir)
+    SetButtonState 1
+
+
+    
+    Do Until encontrado
+        idx = Int(total * Rnd)
+        escolhido = lista(idx)
+        isValid = True
+        caminhoFull = pastaAlvo & "\" & escolhido
+
+        ' Verifica se o arquivo já está no histórico (Sorteado ou Inválido anterior)
+        If InStr(historico, escolhido) > 0 Then
+            tentativas = tentativas + 1
+        Else
+            ' Validação de atalho .lnk
+            If LCase(fso.GetExtensionName(escolhido)) = "lnk" Then
+                On Error Resume Next
+                Set lnk = shell.CreateShortcut(caminhoFull)
+                If Not fso.FileExists(lnk.TargetPath) And lnk.TargetPath <> "" Then 
+                    isValid = False
+                End If
+                If Err.Number <> 0 Then isValid = False
+                Err.Clear
+                On Error GoTo 0
+            End If
+
+            If Not isValid Then
+                ' 1. Avisa no LOG sobre o erro
+                WriteLog "NOTICE: invalid shortcut: " & escolhido
+
+' 2. --- NOVA AÇÃO VISUAL: ACENDE VERMELHO ---
+  '              SetButtonState 2 ' Ativa estado de Aviso
+
+
+' --- CHAMADA CORRIGIDA ---
+            ' Em vez de SetButtonState 2, use a pausa:
+            PausaParaAviso 
+            ' -------------------------
+
+
+                ' 2. Registra no HISTÓRICO apenas o NOME (para pular nas próximas)
+                RegistrarHistorico escolhido
+                ' 3. Atualiza variável local para o loop continuar
+                historico = historico & vbCrLf & escolhido 
+
+' Opcional: Um pequeno delay aqui para o usuário ver o vermelho
+                ' (window.Sleep não funciona bem aqui, mas o loop é rápido)
+
+            Else
+                ' Se for válido e inédito, finaliza o sorteio
+                encontrado = True
+            End If
+            
+            tentativas = tentativas + 1
+        End If
+
+        If tentativas > 500 Then 
+            WriteLog "Log: History reset by excessive attempts."
+            fso.CreateTextFile(historicoFile, True).Close
+            historico = ""
+            tentativas = 0
+        End If
+    Loop
+
+    ' LANÇAMENTO
+    document.getElementById("display").innerText = escolhido
+    RegistrarHistorico escolhido
+    'WriteLog "SUCESS: Sorted: " & escolhido
+
+' --- Se chegou aqui, o jogo é válido, garante que o botão esteja Ciano ON
+'    SetButtonState 1
+
+' Garante que o botão volte a ficar CIANO após sair do loop de erros
+    If encontrado Then SetButtonState 1
+
+    
+    jogoPendente = caminhoFull
+    
+    ' Delay customizado do usuário
+    delayUser = document.getElementById("txtDelay").value
+    If Not IsNumeric(delayUser) Or delayUser = "" Then delayUser = 3000
+    
+    window.setTimeout "FinalizarLancamento", delayUser
+End Sub
+
+
+
+Sub FinalizarLancamento()
+    Dim appUtilPath, cmdExec, waitReturn
+    appUtilPath = document.getElementById("txtUtil1").value
+    waitReturn = document.getElementById("chkWait").checked
+
+    If document.getElementById("chkUtil1").checked And appUtilPath <> "" Then
+        WriteLog "Running AppUtil: " & appUtilPath
+        If Not fso.FileExists(appUtilPath) Then
+            cmdExec = "cmd.exe /c " & appUtilPath
+            shell.Run cmdExec, 1, waitReturn
+        Else
+            shell.Run Chr(34) & appUtilPath & Chr(34), 1, waitReturn
+        End If
+    End If
+
+PlayBeep 800, 200
+
+    WriteLog "Launching: " & jogoPendente
+    shell.Run Chr(34) & jogoPendente & Chr(34), 1, False
+
+' --- NOVA AÇÃO: Jogo lançado, apaga o botão para OFF ---
+    SetButtonState 0
+    
+    document.getElementById("display").innerText = "READY"
+    AlterarIdioma 
+End Sub
+
+        Sub UpdateHistoryList()
+            If fso.FileExists(historicoFile) Then
+                Set ts = fso.OpenTextFile(historicoFile, 1)
+                If Not ts.AtEndOfStream Then document.getElementById("txtHistorico").value = ts.ReadAll
+                ts.Close
+            End If
+        End Sub
+
+        Sub SalvarHistoricoGUI()
+            Set ts = fso.CreateTextFile(historicoFile, True)
+            ts.Write document.getElementById("txtHistorico").value
+            ts.Close
+        End Sub
+
+        Sub RegistrarHistorico(nome)
+            Set ts = fso.OpenTextFile(historicoFile, 8, True)
+            ts.WriteLine nome
+            ts.Close
+        End Sub
+
+        Sub ToggleStartup()
+            On Error Resume Next
+            If document.getElementById("chkStartup").checked Then
+                shell.RegWrite runKey, Chr(34) & Replace(oGamePicker.commandLine, Chr(34), "") & Chr(34), "REG_SZ"
+            Else
+                shell.RegDelete runKey
+            End If
+        End Sub
+
+        Sub CheckStartupStatus()
+            On Error Resume Next
+            shell.RegRead(runKey)
+            If Err.Number = 0 Then document.getElementById("chkStartup").checked = True
+        End Sub
+
+        Sub RefreshLog()
+            If fso.FileExists(logFile) Then
+                Set ts = fso.OpenTextFile(logFile, 1)
+                If Not ts.AtEndOfStream Then document.getElementById("txtLog").value = ts.ReadAll
+                ts.Close
+            End If
+        End Sub
+
+
+Sub WriteLog(txt)
+    On Error Resume Next
+    Dim ts
+    ' Garante que o diretório existe antes de tentar escrever
+    If Not fso.FolderExists(appPath) Then Exit Sub
+    
+    Set ts = fso.OpenTextFile(logFile, 8, True)
+    If Err.Number = 0 Then
+        ts.WriteLine "[" & Now & "] " & txt
+        ts.Close
+    End If
+    Set ts = Nothing ' Libera o objeto
+    On Error GoTo 0
+End Sub
+
+'Function BloquearSelecao()
+'    window.event.returnValue = False
+'End Function
+
+'Function BloquearContexto()
+'    window.event.returnValue = False
+'End Function
+
+Function BloquearSelecao()
+    Dim tag
+    tag = LCase(window.event.srcElement.tagName)
+    ' Se for um campo de texto ou área de texto, PERMITE a seleção
+    If tag = "textarea" Or tag = "input" Then
+        window.event.returnValue = True
+    Else
+        window.event.returnValue = False
+    End If
+End Function
+
+Function BloquearContexto()
+    Dim tag
+    tag = LCase(window.event.srcElement.tagName)
+    ' Permite o clique direito (copiar/colar) apenas em campos de texto
+    If tag = "textarea" Or tag = "input" Then
+        window.event.returnValue = True
+    Else
+        window.event.returnValue = False
+    End If
+End Function
+
+
+Sub document_onkeydown()
+    Select Case window.event.keyCode
+        Case 13 ' ENTER
+            ' Só sorteia se não estiver digitando em uma caixa de texto
+            If LCase(window.event.srcElement.tagName) <> "textarea" And _
+               LCase(window.event.srcElement.tagName) <> "input" Then
+                SortearPrincipal
+            End If
+            
+        Case 116 ' F5
+            ' Recarrega o HTA (útil para limpar memória ou resetar abas)
+            window.location.reload()
+            
+        Case 27 ' ESC
+            ' Fecha o programa instantaneamente
+            window.close()
+    End Select
+End Sub
+
+
+Sub ExibirAjuda()
+    Dim msg
+msg = "GAMESORTER v2.0" & vbCrLf & _
+          "--------------------------------" & vbCrLf & _
+          "Keyboard Shortcuts:" & vbCrLf & _
+          "- [ENTER]: Draw New Game" & vbCrLf & _
+          "- [F5]: Reload Application" & vbCrLf & _
+          "- [ESC]: Close" & vbCrLf & vbCrLf & _
+          "Accepted Parameters:" & vbCrLf & _
+          "- /steamlinks: Search for Steam games (local is default)" & vbCrLf & _
+          "- /autoplay: Draw automatically on startup" & vbCrLf & vbCrLf & _
+          "Files in %TEMP% folder:" & vbCrLf & _
+          "- sg_config.ini | sorteds.log"
+    MsgBox msg, 64, "Help & Attributes"
+End Sub
+
+
+
+Sub TriggerSpinAnimation()
+    ' 1. Primeiro passo: Acende o botão (Ciano)
+    SetButtonState 1 
+    
+    ' 2. Agenda o "apagar" para criar o efeito de pisca (80ms depois)
+    ' O GetRef serve para o VBScript entender qual função chamar no Timer
+    window.setTimeout GetRef("Anim_PiscaApaga"), 80
+End Sub
+
+' --- Funções Auxiliares que a Trigger usa ---
+
+Sub Anim_PiscaApaga()
+    SetButtonState 0 ' Apaga o botão
+    ' Agenda o acendimento final e o início do sorteio (120ms depois)
+    window.setTimeout GetRef("Anim_PiscaAcendeFinal"), 120
+End Sub
+
+Sub Anim_PiscaAcendeFinal()
+    SetButtonState 1 ' Deixa o botão aceso (Estado: STARTADO)
+    
+    ' AGORA SIM, chama a sua função que sorteia os jogos
+    SortearPrincipal 
+End Sub
+
+
+
+
+' --- FUNÇÕES DE ANIMAÇÃO DO BOTÃO (VERSÃO COM 3 IMAGENS) ---
+
+' Define o estado visual do botão trocando a imagem PNG
+' Estado: 0=OFF (btn_off.png), 1=ON (btn_on.png), 2=WARN (btn_warn.png)
+Sub SetButtonState(estado)
+    Dim img, offImg, onImg, warnImg
+    
+    ' --- AJUSTE AQUI OS NOMES CORRETOS DOS SEUS ARQUIVOS ---
+    offImg  = "app_images/gs_btn_off.png"  ' Imagem apagada
+    onImg   = "app_images/gs_btn_on.png"   ' Imagem acesa (Ciano)
+    warnImg = "app_images/gs_btn_not.png" ' Imagem de aviso (Vermelha)
+    ' -----------------------------------------------------
+
+    Set img = document.getElementById("btnSortear")
+
+    ' Verificação de segurança caso a imagem não seja encontrada no HTML
+    If img Is Nothing Then Exit Sub
+
+    Select Case estado
+        Case 0 ' OFF
+            img.src = offImg
+            img.title = ""
+        
+        Case 1 ' ON (Ciano/Startado)
+            img.src = onImg
+            'img.title = "Processing..."
+            
+        Case 2 ' WARN (Vermelho/Aviso)
+            img.src = warnImg
+            img.title = "Invalid shortcut found: Check log"
+    End Select
+End Sub
+
+
+Sub PausaParaAviso()
+    ' 1. Muda a imagem para o Vermelho (btn_warn.png)
+    SetButtonState 2
+
+' Simula: 1 Longo (600ms) e 2 Curtos (200ms) na frequência de 500Hz
+PlayBeep 500, 300
+    
+    ' 2. Pausa Dramática: 0.1 segundos (Ajuste o 0.8 se quiser ainda mais tempo)
+    Dim tempoFinal
+    tempoFinal = Timer + 0.1
+    
+    ' Loop de espera que permite que a interface processe a troca da imagem
+    Do While Timer < tempoFinal
+        ' O timer do Windows reseta à meia-noite, essa checagem evita travamentos raros
+        If Timer < (tempoFinal - 1) Then Exit Do 
+    Loop
+    
+    ' 3. Volta para o Ciano (btn_on.png) para continuar tentando o próximo jogo
+    SetButtonState 1
+End Sub
+
+
+Sub PlayBeep(frequencia, duracao)
+    ' Só executa se o checkbox estiver marcado
+    If document.getElementById("chkSound").checked Then
+        shell.Run "powershell -WindowStyle Hidden -Command [Console]::Beep(" & frequencia & "," & duracao & ")", 0, False
+    End If
+End Sub
+
+    </script>
+</head>
+<body onselectstart="BloquearSelecao" oncontextmenu="BloquearContexto">
+<div class="btn-help" onclick="ExibirAjuda" title="Ajuda">i</div>
+
+<div class="tabs">
+    <div id="tab-main" class="tab" onclick="ShowTab 'main'">SORTEIO</div>
+    <div id="tab-hist" class="tab" onclick="ShowTab 'hist'">HISTORICO</div>
+    <div id="tab-util" class="tab" onclick="ShowTab 'util'">UTILITARIOS</div>
+    <div id="tab-log" class="tab" onclick="ShowTab 'log'">LOGS</div>
+</div>
+
+<div id="content-main" class="content">
+    <div id="display">PRONTO</div>
+
+<br><br>
+<center>
+    <div id="btnSpinContainer" class="spin-button-container" onclick="TriggerSpinAnimation">
+        <img id="btnSortear" id="imgBtnSpin" src="app_images/gs_btn_off.png" class="spin-image">
+    </div>
+</center>
+
+    <center>
+        <p><label style="cursor:pointer; font-style:italic"><input type="checkbox" id="chkModoLivre" onclick="SalvarConfiguracoes"> <span id="lblModo" style="color:gray">MODO LIVRE</span></label></p>
+    </center>
+
+</div>
+
+<div id="content-hist" class="content">
+    <textarea id="txtHistorico" class="list-box"></textarea><br><br>
+    <button id="btnSalvar" class="btn" onclick="SalvarHistoricoGUI">SALVAR</button>
+</div>
+
+<div id="content-util" class="content">
+<label style="cursor: pointer;">
+    <input type="checkbox" id="chkUtil1" onclick="SalvarConfiguracoes"> <span id="lblUtil">Ativar AppUtil (arquivo ou linha de comando)</span><br>
+    <input type="text" id="txtUtil1" onchange="SalvarConfiguracoes" style="width:80%" value="C:\Program Files (x86)\GameSave Manager\gs_mngr.exe /backuponly /silent"><br><br>
+<label style="cursor: pointer;"><input type="checkbox" id="chkWait" onclick="SalvarConfiguracoes" checked> <span id="lblWait">Esperar finalizar</span></label><br><br>
+    Delay: <input type="text" id="txtDelay" onchange="SalvarConfiguracoes" style="width:10%; text-align:center;" title="Delay (ms)" value="5000"> ms<br><br>
+</label>
+<label style="cursor: pointer;">
+    <input type="checkbox" id="chkSound" onclick="SalvarConfiguracoes" checked> 
+    <span id="lblSound">Habilitar Beep (BIOS Style)</span>
+</label>
+<br><br>
+
+    <hr>
+<label style="cursor: pointer;">
+    <input type="checkbox" id="chkStartup" onclick="ToggleStartup"> <span id="lblStartup">Iniciar com Windows</span>
+    <hr>
+    <span id="lblLangText">Idioma:</span>
+</label>
+    <select id="selLang" onchange="AlterarIdioma">
+        <option value="en" selected>English</option>
+        <option value="pt">Portugues</option>
+        <option value="es">Espanol</option>
+    </select>
+</div>
+
+<div id="content-log" class="content">
+    <textarea id="txtLog" class="list-box" readonly readonly style="cursor: default;"></textarea>
+</div>
+
+<div id="status-bar">Ready.</div>
+</body>
+</html>
