@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="app_images/gs_icon.ico">
+  <img src="gamesort.png">
   <br>
-   <img src="gamesort.png">
+   <img src="app_images/gs_icon.ico">
 </p>
 
